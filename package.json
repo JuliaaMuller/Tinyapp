@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/JuliaaMuller/tinyapp/issues"
   },
-  "homepage": "https://github.com/JuliaaMuller/tinyapp#readme"
+  "homepage": "https://github.com/JuliaaMuller/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.17.2"
+  }
 }
