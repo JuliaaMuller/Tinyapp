@@ -2,7 +2,6 @@ const express = require("express");
 const app = express();
 const PORT = 8080;
 
-
 function generateRandomString() {
 // generate random strings for a user ID
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -12,7 +11,6 @@ function generateRandomString() {
   }
   return result;
 };
-
 
 app.set("view engine", "ejs");
 
@@ -38,6 +36,11 @@ const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.p
   res.render("urls_show", templateVars);
 });
 
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  res.redirect(longURL);
+});
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -55,6 +58,11 @@ app.get("/hello", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
+  const newShortURL = generateRandomString();
+  const newLongURL = req.body.longURL;
+
+  urlDatabase[newShortURL] = newLongURL;
+
   console.log(req.body);  // Log the POST request body to the console
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  res.redirect('/urls');     
 });
