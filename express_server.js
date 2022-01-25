@@ -15,6 +15,8 @@ function generateRandomString() {
 app.set("view engine", "ejs");
 
 const bodyParser = require("body-parser");
+const req = require("express/lib/request");
+const res = require("express/lib/response");
 app.use(bodyParser.urlencoded({extended: true}));
 
 const urlDatabase = {
@@ -65,4 +67,9 @@ app.post("/urls", (req, res) => {
 
   console.log(req.body);  // Log the POST request body to the console
   res.redirect('/urls');     
+});
+
+app.post("/urls/:shortURL/delete", (req, res) => {
+delete urlDatabase[req.params.shortURL];
+res.redirect('/urls');
 });
