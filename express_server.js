@@ -9,6 +9,7 @@ const req = require("express/lib/request");
 const res = require("express/lib/response");
 const cookieParser = require("cookie-parser");
 const { send } = require("express/lib/response");
+const bcrypt = require('bcryptjs');
 
 // we are using EJS
 app.set("view engine", "ejs");
@@ -28,7 +29,6 @@ const urlDatabase = {
     userId: "kg5r3d",
   }
 };
-
 let users = {
   "2su8xK": {
     id: "2su8xK",
@@ -51,20 +51,20 @@ const emailLookUp = (email) => {
   // pour vérifier si l'email existe déjà dans users
   for (let data in users) {
     if (users[data]["email"] === email) {
-      return true;
+      return data;
     }
   }
 };
 
-const passLookUp = (email, password) => {
-  for (let data in users) {
-    if (users[data]["email"] === email) {
-      if (users[data]["password"] === password) {
-        return users[data]["id"];
-      }
-    }
-  }
-};
+// const passLookUp = (email, password) => {
+//   for (let data in users) {
+//     if (users[data]["email"] === email) {
+//       if (users[data]["password"] === password) {
+//         return users[data]["id"];
+//       }
+//     }
+//   }
+// };
 
 const urlsUser = (user) => {
   let result = {};
@@ -208,9 +208,10 @@ app.post("/tologin", (req, res) => {
 app.post("/login", (req, res) => {
   const emailLog = req.body.email;
   const passLog = req.body.password;
-  if (emailLookUp(emailLog) === true) {
-    if (passLookUp(emailLog, passLog)) {
-      const userId = passLookUp(emailLog, passLog);
+  if (emailLookUp(emailLog)) {
+    const userId = emailLookUp(emailLog);
+    const userHashedPass = users[userId]["password"];
+    if (bcrypt.compareSync(passLog, userHashedPass)) {
       res.cookie("user_id", userId);
       res.redirect("/urls");
     }
@@ -235,15 +236,16 @@ app.post("/signin", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  if (!email || !password) {
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  if (!email || !hashedPassword) {
     res.status(400).send("Email and Password are required.");
-  } else if (emailLookUp(email) === true) {
+  } else if (emailLookUp(email)) {
     res.status(400).send("Email already exists.");
   } else {
     const newId = generateRandomString();
-    users[newId] = { id: newId, password: password, email: email };
+    users[newId] = { id: newId, password: hashedPassword, email: email };
     const userId = req.cookies["user_id"];
     res.clearCookie("user_id", userId);
-    res.redirect("/urls");
+    res.redirect("/login");
   }
 });
