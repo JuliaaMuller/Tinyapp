@@ -12,7 +12,7 @@ const { send } = require("express/lib/response");
 const bcrypt = require('bcryptjs');
 const cookieSession = require('cookie-session');
 //To use helpers from helpers.js
-const emailLookUp = require('./helpers.js');
+const getUserByEmail = require('./helpers.js');
 
 // we are using EJS
 app.set("view engine", "ejs");
@@ -22,7 +22,6 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieSession({
   name: 'session',
   keys: ["27012022"],
-
 }));
 
 // base de données :
@@ -53,18 +52,6 @@ const generateRandomString = () => {
   }
   return result;
 };
-
-
-
-// const passLookUp = (email, password) => {
-//   for (let data in users) {
-//     if (users[data]["email"] === email) {
-//       if (users[data]["password"] === password) {
-//         return users[data]["id"];
-//       }
-//     }
-//   }
-// };
 
 const urlsUser = (user) => {
   let result = {};
@@ -126,7 +113,7 @@ app.get("/urls/:shortURL", (req, res) => {
   if (req.session.user_id) {
     userId = req.session.user_id;
     userEmail = users[userId]["email"];
-    if (emailLookUp(userEmail, users) !== urlDatabase[shortURL]["userId"]) {
+    if (getUserByEmail(userEmail, users) !== urlDatabase[shortURL]["userId"]) {
       res.status(400).send("You don't own this shortURL, you cannot edit it!");
     }
   }
@@ -222,8 +209,8 @@ app.post("/tologin", (req, res) => {
 app.post("/login", (req, res) => {
   const emailLog = req.body.email;
   const passLog = req.body.password;
-  if (emailLookUp(emailLog, users)) {
-    const userId = emailLookUp(emailLog, users);
+  if (getUserByEmail(emailLog, users)) {
+    const userId = getUserByEmail(emailLog, users);
     const userHashedPass = users[userId]["password"];
     if (bcrypt.compareSync(passLog, userHashedPass)) {
       req.session.user_id = userId;
@@ -255,7 +242,7 @@ app.post("/register", (req, res) => {
   const hashedPassword = bcrypt.hashSync(password, 10);
   if (!email || !hashedPassword) {
     res.status(400).send("Email and Password are required.");
-  } else if (emailLookUp(email, users)) {
+  } else if (getUserByEmail(email, users)) {
     res.status(400).send("Email already exists.");
   } else {
     const newId = generateRandomString();

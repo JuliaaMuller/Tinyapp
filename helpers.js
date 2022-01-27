@@ -1,4 +1,4 @@
-const emailLookUp = (email, database) => {
+const getUserByEmail = (email, database) => {
   // pour vérifier si l'email existe déjà dans users
   for (let data in database) {
     if (database[data]["email"] === email) {
@@ -7,4 +7,4 @@ const emailLookUp = (email, database) => {
   }
 };
 
-module.exports = emailLookUp
+module.exports = getUserByEmail
