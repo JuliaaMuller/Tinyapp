@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080;
 
-// interpreter les infos logées dans "body" en tant qu'objet et les retranscrir en string.
+// to reach infos located in the body and transcript them into strings;
 const bodyParser = require("body-parser");
 // to use Express request
 const req = require("express/lib/request");
@@ -11,20 +11,25 @@ const res = require("express/lib/response");
 const { send } = require("express/lib/response");
 const bcrypt = require('bcryptjs');
 const cookieSession = require('cookie-session');
-//To use helpers from helpers.js
+//To use helpers from helpers.js;
 const getUserByEmail = require('./helpers.js');
 
-// we are using EJS
+// we are using EJS;
 app.set("view engine", "ejs");
 
-// help you pull up the data from the form
+// pour définir que le serveur écoute sur le port : 3000 lors du lancement du serveur
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
+});
+
+// help you pull up the data from the form;
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieSession({
   name: 'session',
   keys: ["27012022"],
 }));
 
-// base de données :
+// Databases :
 const urlDatabase = {
   "b2xVn2": {
     longURL: "http://www.lighthouselabs.ca",
@@ -43,8 +48,12 @@ let users = {
   }
 };
 
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
+// generate random strings for a user ID;
 const generateRandomString = () => {
-// generate random strings for a user ID
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = 0; i < 6; i++) {
@@ -53,6 +62,7 @@ const generateRandomString = () => {
   return result;
 };
 
+// shows the urls belonging to one user;
 const urlsUser = (user) => {
   let result = {};
   for (let url in urlDatabase) {
@@ -74,7 +84,7 @@ app.get("/home", (req, res) => {
   res.render("urls_home", templateVars);
 });
 
-// pour gérer l'action de cliquer sur "create new url"
+// Allows user to "create new shortUrl" on the dedicated page;
 app.get("/urls/new", (req, res) => {
   let userId = "";
   let userEmail = "";
@@ -89,7 +99,6 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
-// pour gérer l'action de cliquer sur "My URLs"
 app.get("/urls", (req, res) => {
   let userId = "";
   let userEmail = "";
@@ -98,12 +107,10 @@ app.get("/urls", (req, res) => {
     userEmail = users[userId]["email"];
   }
   const urlLogUser = urlsUser(userId);
-  console.log(urlLogUser);
   const templateVars = { urls: urlLogUser, userId: userId, userEmail: userEmail };
   res.render("urls_index", templateVars);
 });
 
-// pour afficher la page dédiée de chaque URL et afficher les infos (shortURL et longURL)
 app.get("/urls/:shortURL", (req, res) => {
   if (!urlDatabase[req.params.shortURL]) {
     res.status(400).send("Sorry, this shortURL doest not exist.");
@@ -115,6 +122,7 @@ app.get("/urls/:shortURL", (req, res) => {
   if (req.session.user_id) {
     userId = req.session.user_id;
     userEmail = users[userId]["email"];
+    // checking if the user logged in is allowed to access this shortURL;
     if (getUserByEmail(userEmail, users) !== urlDatabase[shortURL]["userId"]) {
       res.status(400).send("You don't own this shortURL, you cannot edit it!");
     }
@@ -126,7 +134,7 @@ app.get("/urls/:shortURL", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
-// pour rediriger vers la longURL (le site web de destination)
+// Allows the redirection into the real URL by using the short UrL if the shortURL exists;
 app.get("/u/:shortURL", (req, res) => {
   if (!urlDatabase[req.params.shortURL]) {
     res.status(400).send("Sorry, this shortURL doest not exist.");
@@ -135,17 +143,6 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-// pour définir que le serveur écoute sur le port : 3000 lors du lancement du serveur
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
-});
-
-// pour faire le lien entre le JSON package et la database
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-// pour afficher la page pour s'enregistrer
 app.get("/register", (req, res) => {
   let userId = "";
   let userEmail = "";
@@ -157,7 +154,6 @@ app.get("/register", (req, res) => {
   res.render("urls_register", templateVars);
 });
 
-// pour affiche la page pour se Login
 app.get("/login", (req, res) => {
   let userId = "";
   let userEmail = "";
@@ -169,7 +165,7 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
-// pour gérer l'action de cliquer sur le bouton "submit" dans la page "create new URL"
+// Handle submit button in the "Create new URL" Page;
 app.post("/urls", (req, res) => {
   const newShortURL = generateRandomString();
   const userId = req.session.user_id;
@@ -178,7 +174,7 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${newShortURL}`);
 });
 
-// lorsqu'on clique sur le bouton "edit" dans la page "my URLs"
+// Handle edit button in the "my URLS";
 app.post("/urls/:shortURL/edit", (req, res) => {
   const userId = req.session.user_id;
   if (!userId) {
@@ -187,7 +183,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   res.redirect(`/urls/${req.params.shortURL}`);
 });
 
-// lorsqu'on clique sur le bouton "delete" dans la page "my URLs"
+// Handle the delete button from the "my URLs" Page;
 app.post("/urls/:shortURL/delete", (req, res) => {
   const userId = req.session.user_id;
   if (!userId) {
@@ -197,19 +193,19 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-// lorsqu'on clique sur le bouton "update" dans la page dédiée d'une URL
+// Handle the update button from the dedicated page of a shortURL;
 app.post("/urls/:shortURL/update", (req, res) => {
   const newLongURL = req.body.longURL;
   urlDatabase[req.params.shortURL]["longURL"] = newLongURL;
   res.redirect("/urls");
 });
 
-// the login route to redirect to login page
+// the login route to redirect to login page from the Header;
 app.post("/tologin", (req, res) => {
   res.redirect("/login");
 });
 
-// the login page route + creating a cookie
+// Handle the login button after checking if the user is already registered in the database;
 app.post("/login", (req, res) => {
   const emailLog = req.body.email;
   const passLog = req.body.password;
@@ -225,13 +221,13 @@ app.post("/login", (req, res) => {
   }
 });
 
-// the logout route
+// the logout route clearing the session cookie;
 app.post("/logout", (req, res) => {
-  req.session = null; // res.clearCookie("user_id", userId);
+  req.session = null;
   res.redirect("/urls");
 });
 
-// bouton pour rediriger vers la page "register"
+// handle the redirection to the register page from the Header;
 app.post("/signin", (req, res) => {
   if (req.session.user_id) {
     res.redirect("/urls");
@@ -239,7 +235,7 @@ app.post("/signin", (req, res) => {
   res.redirect("/register");
 });
   
-// to register in the app
+// handle the register button from the register page after checking if the password and email fields are not empty, if the user mail does not already exist;
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
