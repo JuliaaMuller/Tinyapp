@@ -105,7 +105,9 @@ app.get("/urls", (req, res) => {
 
 // pour afficher la page dédiée de chaque URL et afficher les infos (shortURL et longURL)
 app.get("/urls/:shortURL", (req, res) => {
-  
+  if (!urlDatabase[req.params.shortURL]) {
+    res.status(400).send("Sorry, this shortURL doest not exist.");
+  }
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL]["longURL"];
   let userId = "";
@@ -126,6 +128,9 @@ app.get("/urls/:shortURL", (req, res) => {
 
 // pour rediriger vers la longURL (le site web de destination)
 app.get("/u/:shortURL", (req, res) => {
+  if (!urlDatabase[req.params.shortURL]) {
+    res.status(400).send("Sorry, this shortURL doest not exist.");
+  }
   const longURL = urlDatabase[req.params.shortURL]["longURL"];
   res.redirect(longURL);
 });
@@ -170,8 +175,7 @@ app.post("/urls", (req, res) => {
   const userId = req.session.user_id;
   const newLongURL = req.body.longURL;
   urlDatabase[newShortURL] = {longURL: newLongURL, userId: userId };
-  console.log(urlDatabase);
-  res.redirect("/urls");
+  res.redirect(`/urls/${newShortURL}`);
 });
 
 // lorsqu'on clique sur le bouton "edit" dans la page "my URLs"
