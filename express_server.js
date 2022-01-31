@@ -9,18 +9,17 @@ const req = require("express/lib/request");
 const res = require("express/lib/response");
 // const cookieParser = require("cookie-parser");
 const { send } = require("express/lib/response");
-const bcrypt = require('bcryptjs');
-const cookieSession = require('cookie-session');
+const bcrypt = require("bcryptjs");
+const cookieSession = require("cookie-session");
 //To use helpers from helpers.js;
-const getUserByEmail = require('./helpers.js');
+const help = require("./helpers.js");
+
+//To import Databases (URLs & Users)
+const urlDatabase = require("./database/urlDatabase")
+const usersDb = require("./database/usersDb")
 
 // we are using EJS;
 app.set("view engine", "ejs");
-
-// pour définir que le serveur écoute sur le port : 3000 lors du lancement du serveur
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
-});
 
 // help you pull up the data from the form;
 app.use(bodyParser.urlencoded({extended: true}));
@@ -29,56 +28,18 @@ app.use(cookieSession({
   keys: ["27012022"],
 }));
 
-// Databases :
-const urlDatabase = {
-  "b2xVn2": {
-    longURL: "http://www.lighthouselabs.ca",
-    userId: "2su8xK",
-  },
-  "cS3Vn2": {
-    longURL: "http://www.google.com",
-    userId: "kg5r3d",
-  }
-};
-let users = {
-  "2su8xK": {
-    id: "2su8xK",
-    email: "julia@gmail.com",
-    password: "aqw"
-  }
-};
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-// generate random strings for a user ID;
-const generateRandomString = () => {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < 6; i++) {
-    result = result + characters[Math.floor(Math.random() * 62)];
-  }
-  return result;
-};
-
-// shows the urls belonging to one user;
-const urlsUser = (user) => {
-  let result = {};
-  for (let url in urlDatabase) {
-    if (urlDatabase[url]["userId"] === user) {
-      result[url] = {shortURL: url, longURL: urlDatabase[url]["longURL"]};
-    }
-  }
-  return result;
-};
-
-app.get("/home", (req, res) => {
+//Get route for the default welcome page
+app.get("/", (req, res) => {
   let userId = "";
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
   }
   const templateVars = { userId: userId, userEmail: userEmail };
   res.render("urls_home", templateVars);
@@ -90,7 +51,7 @@ app.get("/urls/new", (req, res) => {
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
   }
   const templateVars = { userId: userId, userEmail: userEmail };
   if (!userId) {
@@ -99,14 +60,15 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
+//Get route displaying the urls
 app.get("/urls", (req, res) => {
   let userId = "";
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
   }
-  const urlLogUser = urlsUser(userId);
+  const urlLogUser = help.urlsUser(userId);
   const templateVars = { urls: urlLogUser, userId: userId, userEmail: userEmail };
   res.render("urls_index", templateVars);
 });
@@ -121,15 +83,15 @@ app.get("/urls/:shortURL", (req, res) => {
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
     // checking if the user logged in is allowed to access this shortURL;
-    if (getUserByEmail(userEmail, users) !== urlDatabase[shortURL]["userId"]) {
+    if (help.getUserByEmail(userEmail, usersDb) !== urlDatabase[shortURL]["userId"]) {
       res.status(400).send("You don't own this shortURL, you cannot edit it!");
     }
   }
   const templateVars = { shortURL: shortURL, longURL: longURL, userId: userId, userEmail: userEmail };
   if (!userId) {
-    res.redirect("/login");
+    res.status(400).send("Sorry, only logged in users can access this ressource.");
   }
   res.render("urls_show", templateVars);
 });
@@ -148,7 +110,7 @@ app.get("/register", (req, res) => {
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
   }
   const templateVars = { userId: userId, userEmail: userEmail };
   res.render("urls_register", templateVars);
@@ -159,7 +121,7 @@ app.get("/login", (req, res) => {
   let userEmail = "";
   if (req.session.user_id) {
     userId = req.session.user_id;
-    userEmail = users[userId]["email"];
+    userEmail = usersDb[userId]["email"];
   }
   const templateVars = { userId: userId, userEmail: userEmail };
   res.render("urls_login", templateVars);
@@ -167,7 +129,7 @@ app.get("/login", (req, res) => {
 
 // Handle submit button in the "Create new URL" Page;
 app.post("/urls", (req, res) => {
-  const newShortURL = generateRandomString();
+  const newShortURL = help.generateRandomString();
   const userId = req.session.user_id;
   const newLongURL = req.body.longURL;
   urlDatabase[newShortURL] = {longURL: newLongURL, userId: userId };
@@ -208,16 +170,18 @@ app.post("/tologin", (req, res) => {
 // Handle the login button after checking if the user is already registered in the database;
 app.post("/login", (req, res) => {
   const emailLog = req.body.email;
-  const passLog = req.body.password;
-  if (getUserByEmail(emailLog, users)) {
-    const userId = getUserByEmail(emailLog, users);
-    const userHashedPass = users[userId]["password"];
+  if (help.getUserByEmail(emailLog, usersDb)) {
+    const userId = help.getUserByEmail(emailLog, usersDb);
+    const userHashedPass = usersDb[userId]["password"];
+    const passLog = req.body.password;
     if (bcrypt.compareSync(passLog, userHashedPass)) {
       req.session.user_id = userId;
       res.redirect("/urls");
+    } else {
+      res.status(403).send("Password incorrect.");
     }
   } else {
-    res.status(403).send("User or password incorrect.");
+    res.status(403).send("This user does not exist.");
   }
 });
 
@@ -237,17 +201,23 @@ app.post("/signin", (req, res) => {
   
 // handle the register button from the register page after checking if the password and email fields are not empty, if the user mail does not already exist;
 app.post("/register", (req, res) => {
-  const email = req.body.email;
+  const emailRegister = req.body.email;
   const password = req.body.password;
   const hashedPassword = bcrypt.hashSync(password, 10);
-  if (!email || !hashedPassword) {
+  if (!emailRegister || !password) {
     res.status(400).send("Email and Password are required.");
-  } else if (getUserByEmail(email, users)) {
+  } else if (help.getUserByEmail(emailRegister, usersDb)) {
     res.status(400).send("Email already exists.");
   } else {
-    const newId = generateRandomString();
-    users[newId] = { id: newId, password: hashedPassword, email: email };
+    const newId = help.generateRandomString();
+    usersDb[newId] = { id: newId, password: hashedPassword, email: emailRegister };
     req.session.user_id = newId;
     res.redirect("/urls");
   }
 });
+
+// Define the listent port : 3000 when the server starts 
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
+});
+
